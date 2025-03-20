@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do Calendar</title>
+    <style>
+body {
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to right, #6D7B86, #C0C5C9);
+            flex-direction: column;
+            color: #fff;
+            text-align: center;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            background: #E5DDDA;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+            width: 900px;
+            color: black;
+        }
+        .main { flex: 2; }
+        .aside { flex: 1; margin-left: 20px; }
+        .calendar-nav { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .day, .weekday {
+            background: #bdc3c7;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+            position: relative;
+        }
+        .weekday { font-weight: bold; cursor: default; }
+        .day:hover { background: #95a5a6; }
+        .weekday:nth-child(1), .day:nth-child(7n+1) { color: red; }
+        .task-list { margin-top: 10px; }
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #7f8c8d;
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            margin-top: 5px;
+        }
+        .task-actions { display: flex; gap: 5px; }
+        .btn { cursor: pointer; padding: 5px 10px; border-radius: 5px; color: white; border: none; }
+        .delete { background: #e74c3c; }
+        .edit { background: #f39c12; }
+        .done { background: #2ecc71; }
+        .task input { background: transparent; border: none; color: white; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome To-Do List</h1>
+        <p>by Yulli Erisna</p>
+    </div>
+    <div class="container">
+        <div class="main">
+            <div class="calendar-nav">
+                <span class="nav-icon" onclick="prevMonth()">⬅️</span>
+                <h2 id="monthYear"></h2>
+                <span class="nav-icon" onclick="nextMonth()">➡️</span>
+            </div>
+            <div class="calendar" id="calendar"></div>
+        </div>
+        <aside class="aside">
+            <h3>Tambah Aktivitas</h3>
+            <input type="text" id="task" placeholder="Nama Aktivitas">
+            <input type="date" id="taskDate">
+            <input type="time" id="taskTime">
+            <button onclick="addTask()" class="btn done">Tambah</button>
+            <div class="task-list" id="taskList"></div>
+        </aside>
+    </div>
+    
+    <script>
+        let currentDate = new Date();
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || {};
+        
+        function generateCalendar() {
+            let calendar = document.getElementById('calendar');
+            let monthYear = document.getElementById('monthYear');
+            let year = currentDate.getFullYear();
+            let month = currentDate.getMonth();
+            let daysInMonth = new Date(year, month + 1, 0).getDate();
+            let firstDay = new Date(year, month, 1).getDay();
+            let weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            
+            calendar.innerHTML = '';
+            monthYear.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
+            
+            weekdays.forEach(day => {
+                let weekdayCell = document.createElement('div');
+                weekdayCell.textContent = day;
+                weekdayCell.classList.add('weekday');
+                calendar.appendChild(weekdayCell);
+            });
+            
+            for (let i = 0; i < firstDay; i++) {
+                let emptyCell = document.createElement('div');
+                emptyCell.classList.add('day');
+                emptyCell.style.visibility = 'hidden';
+                calendar.appendChild(emptyCell);
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                let dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                let dayCell = document.createElement('div');
+                dayCell.textContent = day;
+                dayCell.classList.add('day');
+                dayCell.onclick = () => showActivities(dateKey);
+                calendar.appendChild(dayCell);
+            }
+        }
+        
+        function addTask() {
+            let task = document.getElementById('task').value;
+            let taskDate = document.getElementById('taskDate').value;
+            let taskTime = document.getElementById('taskTime').value;
+            
+            if (!task || !taskDate || !taskTime) return alert('Harap isi semua bidang!');
+            
+            if (!tasks[taskDate]) tasks[taskDate] = [];
+            tasks[taskDate].push({ task, time: taskTime });
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            showActivities(taskDate);
+            generateCalendar();
+        }
+        
+        function showActivities(dateKey) {
+            let taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+            
+            if (tasks[dateKey]) {
+                tasks[dateKey].forEach((t, index) => {
+                    let taskItem = document.createElement('div');
+                    taskItem.classList.add('task');
+                    taskItem.innerHTML = `
+                        <input type="text" value="${t.task}" onchange="editTask('${dateKey}', ${index}, this.value, 'task')">
+                        <input type="time" value="${t.time}" onchange="editTask('${dateKey}', ${index}, this.value, 'time')">
+                        <button class="done" onclick="deleteTask('${dateKey}', ${index})">✔️</button>`;
+                    taskList.appendChild(taskItem);
+                });
+            }
+        }
+        
+        function editTask(dateKey, index, value, field) {
+            tasks[dateKey][index][field] = value;
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+        
+        function deleteTask(dateKey, index) {
+            tasks[dateKey].splice(index, 1);
+            if (!tasks[dateKey].length) delete tasks[dateKey];
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            showActivities(dateKey);
+        }
+        
+        function prevMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            generateCalendar();
+        }
+        
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            generateCalendar();
+        }
+        
+        generateCalendar();
+    </script>
+</body>
+</html>
